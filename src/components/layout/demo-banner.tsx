@@ -1,13 +1,13 @@
-import { AlertTriangle, FlaskConical } from "lucide-react";
+import { AlertTriangle, DatabaseZap, FlaskConical } from "lucide-react";
 import { getConfigState } from "@/lib/app-config";
+import { getCatalogue } from "@/server/catalogue";
 
 /**
  * Persistent, honest notice about what is and is not operational.
  * Server component: reads env on the server only and never exposes values.
  */
-export function DemoBanner() {
+export async function DemoBanner() {
   const state = getConfigState();
-  if (state.backendFeaturesEnabled) return null;
 
   if (state.mode === "misconfigured") {
     return (
@@ -15,8 +15,24 @@ export function DemoBanner() {
         <p className="mx-auto flex max-w-6xl items-start gap-2 px-4 py-2 font-mono text-xs text-warning sm:px-6">
           <AlertTriangle className="mt-0.5 size-3.5 shrink-0" aria-hidden="true" />
           <span>
-            MISCONFIGURED: some backend variables are set but {state.missing.length} required value(s) are missing.
-            Protected features stay disabled. See README → Configuration.
+            MISCONFIGURED: {state.problems.join("; ")}. Accounts and scoring stay disabled. See README → Configuration.
+          </span>
+        </p>
+      </div>
+    );
+  }
+
+  if (state.mode === "configured") {
+    const { error } = await getCatalogue();
+    if (!error) return null;
+    return (
+      <div role="status" className="border-b border-danger/40 bg-danger/10">
+        <p className="mx-auto flex max-w-6xl items-start gap-2 px-4 py-2 font-mono text-xs text-danger sm:px-6" data-testid="db-banner">
+          <DatabaseZap className="mt-0.5 size-3.5 shrink-0" aria-hidden="true" />
+          <span>
+            {error === "schema_missing"
+              ? "DATABASE NOT READY: the Supabase migrations have not been applied. See docs/database.md."
+              : "DATABASE UNAVAILABLE: challenges could not be loaded. Retrying shortly."}
           </span>
         </p>
       </div>

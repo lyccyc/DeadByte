@@ -1,11 +1,28 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { Suspense } from "react";
 import { ArrowLeft } from "lucide-react";
 import { REGIONS, getRegion } from "@/config/regions";
 import { listPublishedChallenges } from "@/lib/challenges";
 import { RegionIcon } from "@/components/regions/region-icon";
 import { RegionChallengeList } from "@/components/regions/region-challenge-list";
+import { getConfigState } from "@/lib/app-config";
+import { getMySolves } from "@/server/progress";
+import type { Challenge } from "@/lib/challenge-types";
+
+/** Reads the session (solved state / progress), so it streams in behind Suspense. */
+async function PersonalizedRegionList({ challenges }: { challenges: Challenge[] }) {
+  const { accountsEnabled } = getConfigState();
+  const solves = accountsEnabled ? await getMySolves() : null;
+  return (
+    <RegionChallengeList
+      challenges={challenges}
+      solvedIds={solves?.map((s) => s.challengeId)}
+      signedOutHint={accountsEnabled ? "Sign in to track solved cases in this region." : undefined}
+    />
+  );
+}
 
 export function generateStaticParams() {
   return REGIONS.map((r) => ({ slug: r.slug }));
@@ -22,7 +39,7 @@ export default async function RegionPage({ params }: PageProps<"/regions/[slug]"
   const region = getRegion(slug);
   if (!region) notFound();
 
-  const challenges = listPublishedChallenges({ region: region.slug });
+  const challenges = await listPublishedChallenges({ region: region.slug });
   const index = REGIONS.findIndex((r) => r.slug === region.slug);
   const prev = REGIONS[(index - 1 + REGIONS.length) % REGIONS.length];
   const next = REGIONS[(index + 1) % REGIONS.length];
@@ -72,7 +89,9 @@ export default async function RegionPage({ params }: PageProps<"/regions/[slug]"
         <h2 id="cases-title" className="mb-6 text-xl font-semibold">
           Case files
         </h2>
-        <RegionChallengeList challenges={challenges} />
+        <Suspense fallback={<RegionChallengeList challenges={challenges} />}>
+          <PersonalizedRegionList challenges={challenges} />
+        </Suspense>
       </section>
 
       <nav aria-label="Other regions" className="mx-auto mt-16 flex max-w-6xl justify-between gap-4 px-4 font-mono text-sm sm:px-6">

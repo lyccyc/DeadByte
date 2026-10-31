@@ -2,8 +2,8 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useId, useState } from "react";
-import { LogIn, Menu, X } from "lucide-react";
+import { useEffect, useId, useState, type ReactNode } from "react";
+import { Menu, X } from "lucide-react";
 import { Wordmark } from "./wordmark";
 import { NAV_LINKS } from "./nav-links";
 
@@ -12,7 +12,8 @@ function isActive(pathname: string, href: string): boolean {
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
-export function SiteHeader() {
+/** `account` / `mobileAccount`: server-rendered account areas (wrapped in Suspense by the layout). */
+export function SiteHeader({ account, mobileAccount }: { account: ReactNode; mobileAccount: ReactNode }) {
   const pathname = usePathname();
   // The menu remembers the path it was opened on, so navigating closes it automatically.
   const [openedOn, setOpenedOn] = useState<string | null>(null);
@@ -46,16 +47,7 @@ export function SiteHeader() {
               </Link>
             </li>
           ))}
-          <li className="ml-2">
-            <Link
-              href="/login"
-              aria-current={pathname === "/login" ? "page" : undefined}
-              className="inline-flex items-center gap-2 rounded-md border border-border px-3 py-1.5 font-mono text-xs uppercase tracking-wider text-fg transition-colors hover:border-accent hover:text-accent"
-            >
-              <LogIn className="size-3.5" aria-hidden="true" />
-              Login
-            </Link>
-          </li>
+          <li className="ml-2">{account}</li>
         </ul>
 
         <button
@@ -72,7 +64,7 @@ export function SiteHeader() {
 
       <div id={menuId} hidden={!open} className="border-t border-border bg-surface md:hidden">
         <ul className="mx-auto flex max-w-6xl flex-col px-4 py-2">
-          {[...NAV_LINKS, { href: "/login", label: "Login" } as const].map((link) => (
+          {NAV_LINKS.map((link) => (
             <li key={link.href}>
               <Link
                 href={link.href}
@@ -84,6 +76,7 @@ export function SiteHeader() {
               </Link>
             </li>
           ))}
+          <li>{mobileAccount}</li>
         </ul>
       </div>
     </header>

@@ -1,35 +1,93 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, Download, FileArchive, Lock, ShieldAlert } from "lucide-react";
+import { Suspense } from "react";
+import { ArrowLeft, CheckCircle2, Download, FileArchive, Lock, ShieldAlert } from "lucide-react";
 import { getRegionOrThrow } from "@/config/regions";
 import { getPublishedChallenge, listPublishedChallenges } from "@/lib/challenges";
 import { formatBytes, formatDate } from "@/lib/format";
 import { getConfigState } from "@/lib/app-config";
 import { RegionIcon } from "@/components/regions/region-icon";
 import { DifficultyBadge } from "@/components/challenges/difficulty-badge";
-import { FlagForm } from "@/components/challenges/flag-form";
+import { FlagForm, FlagFormLocked } from "@/components/challenges/flag-form";
+import { getSessionUser } from "@/server/auth";
+import { getMySolves } from "@/server/progress";
+import type { Challenge } from "@/lib/challenge-types";
 import { CopyButton } from "@/components/ui/copy-button";
 import { DemoTag } from "@/components/ui/demo-tag";
 import { Notice } from "@/components/ui/notice";
 
-export function generateStaticParams() {
-  return listPublishedChallenges().map((c) => ({ slug: c.slug }));
+/** Placeholder keeps the build valid when no challenge is published yet (Cache Components needs ≥1 param). */
+const NO_CHALLENGES = "__no-published-challenges__";
+
+export async function generateStaticParams() {
+  const slugs = (await listPublishedChallenges()).map((c) => ({ slug: c.slug }));
+  return slugs.length > 0 ? slugs : [{ slug: NO_CHALLENGES }];
+}
+
+async function PlayerSolveStatus({ challenge }: { challenge: Challenge }) {
+  if (!getConfigState().accountsEnabled) return <>Not tracked</>;
+  const solves = await getMySolves();
+  if (!solves) return <>Sign in to track</>;
+  const solve = solves.find((s) => s.challengeId === challenge.id);
+  return solve ? (
+    <span className="inline-flex items-center gap-1 text-success" data-testid="solved-status">
+      <CheckCircle2 className="size-3.5" aria-hidden="true" /> Solved
+    </span>
+  ) : (
+    <span className="text-fg">Unsolved</span>
+  );
+}
+
+async function PlayerFlagPanel({ challenge }: { challenge: Challenge }) {
+  if (!getConfigState().accountsEnabled || challenge.isDemo) {
+    return <FlagFormLocked reason="Unavailable in demo mode: server-side flag verification and accounts are not connected. Nothing is submitted." />;
+  }
+  const user = await getSessionUser();
+  if (!user) {
+    return (
+      <FlagFormLocked
+        reason="Sign in to submit flags. Flags are verified on the server."
+        action={{ href: `/login?next=${encodeURIComponent(`/challenges/${challenge.slug}`)}`, label: "SIGN IN TO SUBMIT" }}
+      />
+    );
+  }
+  const solve = (await getMySolves())?.find((s) => s.challengeId === challenge.id);
+  if (solve) {
+    return (
+      <section aria-labelledby="flag-title" className="rounded-xl border border-success/40 bg-success/10 p-5" data-testid="solved-panel">
+        <h2 id="flag-title" className="flex items-center gap-2 font-semibold text-success">
+          <CheckCircle2 className="size-4" aria-hidden="true" /> Solved
+        </h2>
+        <p className="mt-2 text-sm text-fg">
+          You recovered this flag on {formatDate(solve.solvedAt)} and were awarded{" "}
+          <span className="font-mono font-semibold">{solve.pointsAwarded}</span> points.
+        </p>
+        <p className="mt-2 text-xs text-muted">Points are awarded once. Repeat submissions never add more.</p>
+      </section>
+    );
+  }
+  return <FlagForm challengeId={challenge.id} />;
 }
 
 export async function generateMetadata({ params }: PageProps<"/challenges/[slug]">): Promise<Metadata> {
-  const challenge = getPublishedChallenge((await params).slug);
-  if (!challenge) return { title: "Challenge not found" };
+  const challenge = await getPublishedChallenge((await params).slug);
+  if (!challenge) return { title: "Challenge not found", robots: { index: false } };
   return { title: challenge.title, description: challenge.summary };
 }
 
 export default async function ChallengePage({ params }: PageProps<"/challenges/[slug]">) {
   const { slug } = await params;
-  const challenge = getPublishedChallenge(slug);
+  const challenge = await getPublishedChallenge(slug);
   if (!challenge) notFound();
 
   const region = getRegionOrThrow(challenge.region);
-  const { backendFeaturesEnabled } = getConfigState();
+  const { accountsEnabled, evidenceDownloadsEnabled } = getConfigState();
+  const downloadNote = evidenceDownloadsEnabled
+    ? "Sign in to request a short-lived download link."
+    : accountsEnabled
+      ? "Evidence downloads are not connected yet: the private evidence storage (Cloudflare R2) is still being set up."
+      : "Downloads are unavailable in demo mode: no evidence is stored and sign-in is not connected.";
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-10 sm:px-6" style={{ ["--region-accent" as string]: region.accent }}>
@@ -57,6 +115,7 @@ export default async function ChallengePage({ params }: PageProps<"/challenges/[
         <h1 className="mt-2 text-3xl font-bold tracking-tight sm:text-5xl">{challenge.title}</h1>
         <div className="mt-4 flex flex-wrap items-center gap-2">
           {challenge.isDemo ? <DemoTag label="Demo briefing" /> : null}
+          {challenge.isSample ? <DemoTag label="Sample · testing only" /> : null}
           <DifficultyBadge difficulty={challenge.difficulty} />
           <span className="rounded border border-border px-1.5 py-0.5 font-mono text-[11px] uppercase tracking-wider text-muted">
             {challenge.category}
@@ -133,9 +192,7 @@ export default async function ChallengePage({ params }: PageProps<"/challenges/[
                         </dd>
                       </dl>
                       <p id={`dl-${file.id}`} className="mt-2 text-xs text-muted">
-                        {backendFeaturesEnabled
-                          ? "Sign in to request a short-lived download link."
-                          : "Downloads are unavailable in demo mode: no evidence is stored and sign-in is not connected."}
+                        {downloadNote}
                       </p>
                     </li>
                   );
@@ -158,7 +215,11 @@ export default async function ChallengePage({ params }: PageProps<"/challenges/[
             </div>
             <div>
               <dt className="text-muted">Status</dt>
-              <dd className="mt-1 text-sm text-muted">Not tracked</dd>
+              <dd className="mt-1 text-sm text-muted">
+                <Suspense fallback="…">
+                  <PlayerSolveStatus challenge={challenge} />
+                </Suspense>
+              </dd>
             </div>
             <div>
               <dt className="text-muted">Published</dt>
@@ -168,8 +229,16 @@ export default async function ChallengePage({ params }: PageProps<"/challenges/[
               <dt className="text-muted">Flag format</dt>
               <dd className="mt-1 text-sm text-fg">DEADBYTE{"{...}"}</dd>
             </div>
+            {challenge.solveCount != null ? (
+              <div>
+                <dt className="text-muted">Solves</dt>
+                <dd className="mt-1 text-sm text-fg">{challenge.solveCount}</dd>
+              </div>
+            ) : null}
           </dl>
-          <FlagForm />
+          <Suspense fallback={<FlagFormLocked reason="Checking your session…" />}>
+            <PlayerFlagPanel challenge={challenge} />
+          </Suspense>
           <p className="flex items-start gap-2 text-xs text-muted">
             <ShieldAlert className="mt-0.5 size-3.5 shrink-0" aria-hidden="true" />
             Flags are never checked in your browser. Repeat correct submissions never award extra points.

@@ -21,17 +21,19 @@ The full product/implementation spec lives in [`CLAUDE.md`](./CLAUDE.md).
 | Phase | State |
 | --- | --- |
 | 0 — Bootstrap (Next.js, TS, Tailwind, lint/typecheck/test/build) | ✅ Done |
-| 1 — Interactive frontend (landing, map, regions, challenges, placeholders) | ✅ Done, **demo data only** |
-| 2 — Supabase auth, migrations/RLS, real submissions, leaderboard | ⏳ Not started — needs a Supabase project |
-| 3 — R2 evidence upload CLI + signed downloads | ⏳ Not started — needs an R2 bucket + keys |
-| 4 — Admin workflow, deploy docs | ⏳ Not started |
+| 1 — Interactive frontend (landing, map, regions, challenges) | ✅ Done |
+| 2 — Supabase auth, migrations/RLS, real submissions, profile, leaderboard, admin publishing | ✅ Code done and tested. **Needs the owner to apply the migration** (see [`docs/database.md`](./docs/database.md)) |
+| 3 — R2 evidence upload CLI + signed downloads | ⏳ Not started: needs an R2 bucket and keys |
+| 4 — Admin polish (evidence attach UI), deploy docs | ⏳ Not started |
 
-**What works today:** browsing the landing page, the clickable/keyboard-accessible
-seven-continent map, region pages, challenge search/filter/sort, challenge detail pages,
-and read-only JSON APIs — all backed by a clearly labelled demo catalogue.
+**With Supabase configured and the migration applied:**
+- register, confirm email, sign in and out, reset password;
+- admins create, edit, publish and archive challenges, and set flags (stored only as HMAC digests);
+- players submit flags to a server-side verifier: points are awarded once, attempts are rate-limited, and solves show on `/profile` and `/leaderboard`.
 
-**What does not work yet (and is visibly disabled):** accounts, flag submission,
-evidence downloads, profile stats, leaderboard data, admin. No flags or evidence files exist in this repo.
+**Without Supabase (demo mode):** the labelled demo catalogue is browsable. Accounts, submission and admin are visibly disabled, and their APIs return `503`.
+
+**Not yet:** evidence downloads (Phase 3). The download button stays disabled with an explanation.
 
 ## Quick start
 
@@ -56,23 +58,30 @@ Open http://localhost:3000. No `.env` is needed for demo mode.
 | `npm run lint` | ESLint |
 | `npm run typecheck` | `next typegen` + `tsc --noEmit` |
 | `npm test` | Vitest unit tests (`tests/unit`) |
-| `npm run test:e2e` | Playwright (`tests/e2e`) against a production server on port 3100 — run `npm run build` first |
+| `npm run test:e2e` | Playwright (`tests/e2e`) against a production server on port 3100 — run `npm run build` first (CI runs it in demo mode) |
+| `npm run test:db` | Migrations + RLS/scoring/concurrency tests against a disposable Postgres (`TEST_DATABASE_URL`) |
+| `npm run set-role -- --email <e> --role admin` | Operator CLI: grant/revoke admin (reads `.env.local`) |
 | `npm run map:generate` | Regenerate map geometry from Natural Earth (see `docs/map-provenance.md`) |
 
 ## Configuration
 
 Copy `.env.example` to `.env.local`. The app reports one of three states:
 
-- **demo** — no backend variables set. Browse-only.
-- **misconfigured** — some but not all set. A warning banner appears; protected features stay off.
-- **configured** — all set. *Backend features still remain off until Phase 2 code ships*
-  (`BACKEND_IMPLEMENTED` in `src/lib/app-config.ts`).
+- **demo**: no Supabase variables set. Browse-only.
+- **configured**: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`,
+  `SUPABASE_SECRET_KEY` and `FLAG_HMAC_SECRET` (≥32 bytes) are all set. Accounts and scoring are on.
+- **misconfigured**: some variables are set or invalid. A banner explains the problem without printing values, and protected features stay off.
 
-Never put `SUPABASE_SECRET_KEY`, `FLAG_HMAC_SECRET` or `R2_*` behind a `NEXT_PUBLIC_` prefix.
+R2 variables are only needed for Phase 3 evidence downloads.
+
+Never put `SUPABASE_SECRET_KEY`, `FLAG_HMAC_SECRET` or `R2_*` behind a `NEXT_PUBLIC_` prefix. The app treats that as misconfigured.
+
+**First-time Supabase setup:** apply the migration, set the Auth redirect URLs and grant yourself admin. The steps are in [`docs/database.md`](./docs/database.md).
 
 ## Docs
 
-- [`docs/architecture.md`](./docs/architecture.md) — module layout and UI honesty rules
+- [`docs/architecture.md`](./docs/architecture.md) — module layout, modes, caching and UI honesty rules
+- [`docs/database.md`](./docs/database.md) — migrations, Auth setup, admin role, security model, scoring and ranking
 - [`docs/map-provenance.md`](./docs/map-provenance.md) — map data source and licence
 
 ## License

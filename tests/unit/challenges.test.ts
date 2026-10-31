@@ -1,5 +1,11 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { DEMO_CHALLENGES } from "@/data/demo-challenges";
+
+// The catalogue is a Next.js "use cache" function; in unit tests serve the demo catalogue directly.
+vi.mock("@/server/catalogue", async () => {
+  const { DEMO_CHALLENGES: demo } = await import("@/data/demo-challenges");
+  return { getCatalogue: async () => ({ source: "demo", challenges: [...demo], error: null }) };
+});
 import { isRegionSlug } from "@/config/regions";
 import { filterChallenges } from "@/lib/challenge-filter";
 import { countPublishedByRegion, getPublishedChallenge, listPublishedChallenges } from "@/lib/challenges";
@@ -47,28 +53,28 @@ describe("demo catalogue integrity", () => {
     expect(JSON.stringify(DEMO_CHALLENGES)).not.toMatch(/DEADBYTE\{/);
   });
 
-  it("has at least one published challenge in every region", () => {
-    for (const n of Object.values(countPublishedByRegion())) expect(n).toBeGreaterThan(0);
+  it("has at least one published challenge in every region", async () => {
+    for (const n of Object.values(await countPublishedByRegion())) expect(n).toBeGreaterThan(0);
   });
 });
 
 describe("publication visibility", () => {
-  it("never lists draft or archived challenges", () => {
-    const list = listPublishedChallenges();
+  it("never lists draft or archived challenges", async () => {
+    const list = await listPublishedChallenges();
     expect(list.every((c) => c.status === "published")).toBe(true);
     expect(list.map((c) => c.slug)).not.toContain("unreleased-draft-case");
     expect(list.map((c) => c.slug)).not.toContain("retired-archived-case");
   });
 
-  it("does not resolve draft/archived challenges by slug, even via search", () => {
-    expect(getPublishedChallenge("unreleased-draft-case")).toBeUndefined();
-    expect(getPublishedChallenge("retired-archived-case")).toBeUndefined();
-    expect(listPublishedChallenges({ q: "Unreleased" })).toHaveLength(0);
-    expect(listPublishedChallenges({ q: "fixture" })).toHaveLength(0);
+  it("does not resolve draft/archived challenges by slug, even via search", async () => {
+    expect(await getPublishedChallenge("unreleased-draft-case")).toBeUndefined();
+    expect(await getPublishedChallenge("retired-archived-case")).toBeUndefined();
+    expect(await listPublishedChallenges({ q: "Unreleased" })).toHaveLength(0);
+    expect(await listPublishedChallenges({ q: "fixture" })).toHaveLength(0);
   });
 
-  it("does not count hidden challenges per region", () => {
-    const counts = countPublishedByRegion();
+  it("does not count hidden challenges per region", async () => {
+    const counts = await countPublishedByRegion();
     const expected = DEMO_CHALLENGES.filter((c) => c.status === "published" && c.region === "europe").length;
     expect(counts.europe).toBe(expected);
   });

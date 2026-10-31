@@ -46,6 +46,17 @@ export interface Challenge {
   evidence: EvidenceFile[];
   /** Demo-only content is fictional and has no evidence bytes or flags. */
   isDemo: boolean;
+  /** Real database challenge explicitly labelled as sample/testing content. */
+  isSample?: boolean;
+  /** Number of players who solved it; null/undefined when unknown (demo mode). */
+  solveCount?: number | null;
+}
+
+/** A player's solve of one challenge. */
+export interface SolveRecord {
+  challengeId: string;
+  pointsAwarded: number;
+  solvedAt: string;
 }
 
 export const DIFFICULTY_LABEL: Record<Difficulty, string> = {
