@@ -1,7 +1,9 @@
 import Link from "next/link";
 import { ArrowRight, Download, Flag, Search, Trophy } from "lucide-react";
 import { REGIONS } from "@/config/regions";
-import { countPublishedByRegion, listPublishedChallenges } from "@/lib/challenges";
+import { countByRegion, listPublishedChallenges } from "@/lib/challenges";
+import { getCatalogue } from "@/server/catalogue";
+import { getLeaderboardPage } from "@/server/leaderboard";
 import { WorldMap } from "@/components/map/world-map";
 import { ExplorerPenguin } from "@/components/penguin/explorer-penguin";
 import { RegionCard } from "@/components/regions/region-card";
@@ -9,9 +11,16 @@ import { ChallengeCard } from "@/components/challenges/challenge-card";
 import { SectionHeading } from "@/components/ui/section-heading";
 import { DemoTag } from "@/components/ui/demo-tag";
 
-export default function HomePage() {
-  const counts = countPublishedByRegion();
-  const featured = listPublishedChallenges({ sort: "newest" }).slice(0, 3);
+export default async function HomePage() {
+  const [catalogue, featuredAll, board] = await Promise.all([
+    getCatalogue(),
+    listPublishedChallenges({ sort: "newest" }),
+    getLeaderboardPage(1),
+  ]);
+  const counts = countByRegion(catalogue.challenges);
+  const featured = featuredAll.slice(0, 3);
+  const isDemo = catalogue.source === "demo";
+  const topPlayers = board.available ? board.entries.slice(0, 5) : [];
 
   return (
     <>
@@ -111,9 +120,13 @@ export default function HomePage() {
           eyebrow="Recently Published"
           title="Latest case files"
           description={
-            <span className="inline-flex flex-wrap items-center gap-2">
-              <DemoTag label="Demo catalogue" /> Preview briefings — evidence and flags are not available yet.
-            </span>
+            isDemo ? (
+              <span className="inline-flex flex-wrap items-center gap-2">
+                <DemoTag label="Demo catalogue" /> Preview briefings — evidence and flags are not available yet.
+              </span>
+            ) : (
+              "The newest cases in the archive."
+            )
           }
           action={
             <Link href="/challenges" className="inline-flex items-center gap-1 font-mono text-sm text-accent hover:text-accent-hover">
@@ -121,30 +134,56 @@ export default function HomePage() {
             </Link>
           }
         />
-        <ul className="mt-8 grid gap-4 md:grid-cols-3">
-          {featured.map((c) => (
-            <li key={c.id}>
-              <ChallengeCard challenge={c} />
-            </li>
-          ))}
-        </ul>
+        {featured.length === 0 ? (
+          <div className="mt-8 rounded-xl border border-dashed border-border bg-surface/50 px-6 py-12 text-center" data-testid="featured-empty">
+            <p className="font-mono text-sm text-accent">[ ARCHIVE EMPTY ]</p>
+            <p className="mt-2 text-sm text-muted">No cases have been published yet. Check back soon.</p>
+          </div>
+        ) : (
+          <ul className="mt-8 grid gap-4 md:grid-cols-3">
+            {featured.map((c) => (
+              <li key={c.id}>
+                <ChallengeCard challenge={c} />
+              </li>
+            ))}
+          </ul>
+        )}
       </section>
 
-      {/* LEADERBOARD PREVIEW (honest placeholder) */}
+      {/* LEADERBOARD PREVIEW: real data only */}
       <section className="mx-auto max-w-6xl px-4 pt-20 sm:px-6" aria-labelledby="lb-title">
-        <div className="flex flex-col items-start gap-4 rounded-2xl border border-border bg-surface p-6 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex items-start gap-4">
-            <Trophy className="mt-1 size-6 text-warning" aria-hidden="true" />
-            <div>
-              <h2 id="lb-title" className="text-xl font-semibold">All-time leaderboard</h2>
-              <p className="mt-1 text-sm text-muted">
-                Rankings appear here once accounts and server-side scoring are connected. No sample players are shown.
-              </p>
+        <div className="rounded-2xl border border-border bg-surface p-6">
+          <div className="flex flex-col items-start gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-start gap-4">
+              <Trophy className="mt-1 size-6 text-warning" aria-hidden="true" />
+              <div>
+                <h2 id="lb-title" className="text-xl font-semibold">All-time leaderboard</h2>
+                <p className="mt-1 text-sm text-muted">
+                  {!board.available
+                    ? "Rankings appear here once accounts and server-side scoring are connected. No sample players are shown."
+                    : topPlayers.length === 0
+                      ? "No solves yet — the first investigator to recover a flag takes the top spot."
+                      : "Top investigators by total points."}
+                </p>
+              </div>
             </div>
+            <Link href="/leaderboard" className="font-mono text-sm text-accent hover:text-accent-hover">
+              Open leaderboard →
+            </Link>
           </div>
-          <Link href="/leaderboard" className="font-mono text-sm text-accent hover:text-accent-hover">
-            Open leaderboard →
-          </Link>
+          {topPlayers.length > 0 ? (
+            <ol className="mt-5 divide-y divide-border border-t border-border font-mono text-sm" data-testid="leaderboard-preview">
+              {topPlayers.map((p) => (
+                <li key={p.rank} className="flex items-center justify-between gap-4 py-2">
+                  <span className="flex min-w-0 items-center gap-3">
+                    <span className="w-6 text-right text-muted">{p.rank}</span>
+                    <span className="truncate text-fg">{p.username}</span>
+                  </span>
+                  <span className="shrink-0 text-accent">{p.points} pts</span>
+                </li>
+              ))}
+            </ol>
+          ) : null}
         </div>
       </section>
     </>

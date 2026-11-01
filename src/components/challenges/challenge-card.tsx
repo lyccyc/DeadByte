@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { HardDriveDownload } from "lucide-react";
+import { CheckCircle2, HardDriveDownload, Users } from "lucide-react";
 import { getRegionOrThrow } from "@/config/regions";
 import type { Challenge } from "@/lib/challenge-types";
 import { formatBytes } from "@/lib/format";
@@ -7,7 +7,7 @@ import { RegionIcon } from "@/components/regions/region-icon";
 import { DemoTag } from "@/components/ui/demo-tag";
 import { DifficultyBadge } from "./difficulty-badge";
 
-export function ChallengeCard({ challenge }: { challenge: Challenge }) {
+export function ChallengeCard({ challenge, solved = false }: { challenge: Challenge; solved?: boolean }) {
   const region = getRegionOrThrow(challenge.region);
   const totalBytes = challenge.evidence.reduce((sum, f) => sum + f.sizeBytes, 0);
   const allUploaded = challenge.evidence.length > 0 && challenge.evidence.every((f) => f.status === "verified");
@@ -23,7 +23,15 @@ export function ChallengeCard({ challenge }: { challenge: Challenge }) {
           <RegionIcon icon={region.icon} className="size-3.5" />
           {region.name} · {region.forensicDomain}
         </span>
-        {challenge.isDemo ? <DemoTag /> : null}
+        <span className="flex items-center gap-1.5">
+          {solved ? (
+            <span className="inline-flex items-center gap-1 rounded border border-success/50 bg-success/10 px-1.5 py-0.5 text-[10px] font-semibold text-success" data-testid="solved-badge">
+              <CheckCircle2 className="size-3" aria-hidden="true" /> Solved
+            </span>
+          ) : null}
+          {challenge.isDemo ? <DemoTag /> : null}
+          {challenge.isSample ? <DemoTag label="Sample" /> : null}
+        </span>
       </div>
 
       <h3 className="mt-3 text-lg font-semibold leading-snug">
@@ -40,7 +48,7 @@ export function ChallengeCard({ challenge }: { challenge: Challenge }) {
         </span>
       </div>
 
-      <dl className="mt-4 grid grid-cols-2 gap-2 border-t border-border pt-3 font-mono text-xs">
+      <dl className={`mt-4 grid gap-2 border-t border-border pt-3 font-mono text-xs ${challenge.solveCount != null ? "grid-cols-3" : "grid-cols-2"}`}>
         <div>
           <dt className="text-muted">Points</dt>
           <dd className="text-base font-semibold text-fg">{challenge.points}</dd>
@@ -53,6 +61,15 @@ export function ChallengeCard({ challenge }: { challenge: Challenge }) {
             {!allUploaded && challenge.evidence.length > 0 ? <span className="sr-only">(planned size, not uploaded)</span> : null}
           </dd>
         </div>
+        {challenge.solveCount != null ? (
+          <div>
+            <dt className="text-muted">Solves</dt>
+            <dd className="flex items-center gap-1 text-fg">
+              <Users className="size-3.5 text-muted" aria-hidden="true" />
+              {challenge.solveCount}
+            </dd>
+          </div>
+        ) : null}
       </dl>
     </article>
   );

@@ -11,13 +11,18 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "playwright test",
-    "map:generate": "tsx scripts/generate-world-map.ts"
+    "map:generate": "tsx scripts/generate-world-map.ts",
+    "test:db": "bash scripts/test-db.sh",
+    "set-role": "node --env-file-if-exists=.env.local --import tsx scripts/set-role.ts"
   },
   "dependencies": {
+    "@supabase/ssr": "^0.12.7",
+    "@supabase/supabase-js": "^2.118.0",
     "lucide-react": "^1.66.0",
     "next": "16.4.3",
     "react": "19.3.0",
     "react-dom": "19.3.0",
+    "server-only": "^0.0.1",
     "zod": "^4.6.7"
   },
   "devDependencies": {

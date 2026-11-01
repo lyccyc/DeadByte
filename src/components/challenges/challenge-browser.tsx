@@ -8,21 +8,25 @@ import { DIFFICULTIES, DIFFICULTY_LABEL, type Challenge } from "@/lib/challenge-
 import { filterChallenges } from "@/lib/challenge-filter";
 import { challengeFilterSchema, searchParamsToObject } from "@/lib/validation";
 import { ChallengeGrid } from "./challenge-grid";
+import { SolvedFilter, applySolvedFilter, type SolvedFilterValue } from "./solved-filter";
 
 const selectClass =
   "w-full rounded-md border border-border bg-surface px-3 py-2 font-mono text-sm text-fg focus:border-accent";
 
-export function ChallengeBrowser({ challenges }: { challenges: Challenge[] }) {
+/** `solvedIds` is provided only for signed-in players; it enables the Status filter and Solved badges. */
+export function ChallengeBrowser({ challenges, solvedIds }: { challenges: Challenge[]; solvedIds?: string[] }) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const filters = challengeFilterSchema.parse(searchParamsToObject(new URLSearchParams(searchParams.toString())));
   const [query, setQuery] = useState(filters.q ?? "");
+  const [solvedFilter, setSolvedFilter] = useState<SolvedFilterValue>("all");
+  const solved = useMemo(() => new Set(solvedIds ?? []), [solvedIds]);
 
   const visible = useMemo(
-    () => filterChallenges(challenges, { ...filters, q: query }),
+    () => applySolvedFilter(filterChallenges(challenges, { ...filters, q: query }), solvedFilter, solved),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [challenges, filters.region, filters.difficulty, filters.sort, query],
+    [challenges, filters.region, filters.difficulty, filters.sort, query, solvedFilter, solved],
   );
 
   const update = (key: string, value: string | undefined) => {
@@ -33,13 +37,13 @@ export function ChallengeBrowser({ challenges }: { challenges: Challenge[] }) {
     router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
   };
 
-  const hasFilters = Boolean(filters.region || filters.difficulty || query || filters.sort);
+  const hasFilters = Boolean(filters.region || filters.difficulty || query || filters.sort || solvedFilter !== "all");
 
   return (
     <div className="space-y-6">
       <form
         role="search"
-        className="grid gap-3 rounded-xl border border-border bg-surface/60 p-4 md:grid-cols-[2fr_1fr_1fr_1fr]"
+        className={`grid gap-3 rounded-xl border border-border bg-surface/60 p-4 ${solvedIds ? "md:grid-cols-[2fr_1fr_1fr_1fr_1fr]" : "md:grid-cols-[2fr_1fr_1fr_1fr]"}`}
         onSubmit={(e) => e.preventDefault()}
       >
         <div>
@@ -103,6 +107,7 @@ export function ChallengeBrowser({ challenges }: { challenges: Challenge[] }) {
             <option value="points-asc">Points: low → high</option>
           </select>
         </div>
+        {solvedIds ? <SolvedFilter id="solved" value={solvedFilter} onChange={setSolvedFilter} className={selectClass} /> : null}
       </form>
 
       <div className="flex items-center justify-between gap-4">
@@ -114,6 +119,7 @@ export function ChallengeBrowser({ challenges }: { challenges: Challenge[] }) {
             type="button"
             onClick={() => {
               setQuery("");
+              setSolvedFilter("all");
               router.replace(pathname, { scroll: false });
             }}
             className="inline-flex items-center gap-1 font-mono text-xs text-accent hover:text-accent-hover"
@@ -123,7 +129,7 @@ export function ChallengeBrowser({ challenges }: { challenges: Challenge[] }) {
         ) : null}
       </div>
 
-      <ChallengeGrid challenges={visible} emptyMessage="Try a different search term or remove a filter." />
+      <ChallengeGrid challenges={visible} solvedIds={solved} emptyMessage="Try a different search term or remove a filter." />
     </div>
   );
 }

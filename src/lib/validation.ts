@@ -26,6 +26,8 @@ export const challengeApiQuerySchema = z.object({
   difficulty: z.enum(DIFFICULTIES).optional(),
   sort: z.enum(SORT_OPTIONS).optional(),
   q: z.string().trim().max(100).optional(),
+  page: z.coerce.number().int().min(1).max(10_000).default(1),
+  pageSize: z.coerce.number().int().min(1).max(100).default(50),
 });
 
 export function searchParamsToObject(params: URLSearchParams): Record<string, string> {

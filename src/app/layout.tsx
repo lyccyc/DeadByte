@@ -1,6 +1,8 @@
 import type { Metadata, Viewport } from "next";
 import { JetBrains_Mono, Space_Grotesk } from "next/font/google";
+import { Suspense } from "react";
 import { SiteHeader } from "@/components/layout/site-header";
+import { HeaderAccount, LoginLink } from "@/components/layout/header-account";
 import { SiteFooter } from "@/components/layout/site-footer";
 import { DemoBanner } from "@/components/layout/demo-banner";
 import "./globals.css";
@@ -41,7 +43,18 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         >
           Skip to content
         </a>
-        <SiteHeader />
+        <SiteHeader
+          account={
+            <Suspense fallback={<LoginLink variant="desktop" />}>
+              <HeaderAccount variant="desktop" />
+            </Suspense>
+          }
+          mobileAccount={
+            <Suspense fallback={<LoginLink variant="mobile" />}>
+              <HeaderAccount variant="mobile" />
+            </Suspense>
+          }
+        />
         <DemoBanner />
         <main id="main" className="flex-1">
           {children}
