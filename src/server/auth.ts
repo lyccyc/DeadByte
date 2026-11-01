@@ -1,5 +1,6 @@
 import "server-only";
 import { cache } from "react";
+import { connection } from "next/server";
 import { getConfigState } from "@/lib/app-config";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
@@ -23,6 +24,10 @@ export interface Viewer extends SessionUser {
 /** Verified current user (JWT validated by Supabase `getClaims`), or null. */
 export const getSessionUser = cache(async (): Promise<SessionUser | null> => {
   if (!getConfigState().accountsEnabled) return null;
+  // Verifying a session compares the token expiry with the current time
+  // (Date.now()), which Cache Components forbids during prerendering. Mark
+  // this as request-time work first.
+  await connection();
   const supabase = await createSupabaseServerClient();
   const { data, error } = await supabase.auth.getClaims();
   if (error || !data?.claims?.sub) return null;
