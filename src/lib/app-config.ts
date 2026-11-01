@@ -9,9 +9,11 @@
  *   real challenges, flag submission, profile and leaderboard are enabled.
  * - `misconfigured`: some but not all present, or invalid (fail closed).
  *
- * Evidence downloads additionally need the R2 variables AND the Phase 3 code;
- * until then `evidenceDownloadsEnabled` is false in every state.
+ * Evidence downloads (Phase 3) additionally need valid R2 variables. Bad or
+ * partial R2 variables only switch evidence off (`evidenceProblems`); they do
+ * not take accounts and scoring down.
  */
+import { r2EnvProblems } from "@/lib/r2/env";
 
 export type AppMode = "demo" | "configured" | "misconfigured";
 
@@ -24,9 +26,6 @@ export const REQUIRED_ACCOUNT_ENV = [
 
 export const REQUIRED_EVIDENCE_ENV = ["R2_ACCOUNT_ID", "R2_ACCESS_KEY_ID", "R2_SECRET_ACCESS_KEY", "R2_BUCKET_NAME"] as const;
 
-/** Whether the R2 evidence download code has shipped. Flip in Phase 3. */
-export const EVIDENCE_DOWNLOADS_IMPLEMENTED = false;
-
 export const MIN_FLAG_SECRET_BYTES = 32;
 
 export interface ConfigState {
@@ -38,6 +37,8 @@ export interface ConfigState {
   /** Supabase auth, DB-backed catalogue, flag submission, profile, leaderboard. */
   accountsEnabled: boolean;
   evidenceDownloadsEnabled: boolean;
+  /** Secret-free R2 configuration problems (partial or invalid R2_* variables). */
+  evidenceProblems: string[];
 }
 
 type Env = Record<string, string | undefined>;
@@ -70,14 +71,16 @@ export function getConfigState(env: Env = process.env): ConfigState {
         ? "configured"
         : "misconfigured";
 
-  const evidenceEnvComplete = REQUIRED_EVIDENCE_ENV.every(present);
+  const evidenceProblems = r2EnvProblems(env);
+  const evidenceEnvComplete = REQUIRED_EVIDENCE_ENV.every(present) && evidenceProblems.length === 0;
 
   return {
     mode,
     missing,
     problems,
     accountsEnabled: mode === "configured",
-    evidenceDownloadsEnabled: EVIDENCE_DOWNLOADS_IMPLEMENTED && mode === "configured" && evidenceEnvComplete,
+    evidenceDownloadsEnabled: mode === "configured" && evidenceEnvComplete,
+    evidenceProblems,
   };
 }
 

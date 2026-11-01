@@ -58,7 +58,10 @@ if [ "$result" != "1:77" ]; then
 fi
 echo "concurrency: 8 parallel correct submissions -> exactly 1 solve (77 points). PASSED"
 
-# --- Rollback applies cleanly.
-"${PSQL[@]}" "$TEST_URL" -f "$ROOT"/supabase/rollbacks/20261031120000_core_schema.down.sql
+# --- Rollbacks apply cleanly, newest first.
+for f in $(ls -r "$ROOT"/supabase/rollbacks/*.down.sql); do
+  echo "rollback: $(basename "$f")"
+  "${PSQL[@]}" "$TEST_URL" -f "$f"
+done
 echo "rollback: PASSED"
 echo "All database tests passed."

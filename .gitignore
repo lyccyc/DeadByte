@@ -45,3 +45,6 @@ next-env.d.ts
 /test-results/
 /playwright-report/
 /blob-report/
+
+# evidence upload manifests (scripts/upload-evidence.ts) — no secrets, but local operator output
+/evidence-manifests/
