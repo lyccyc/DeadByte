@@ -76,7 +76,29 @@ export async function generateMetadata({ params }: PageProps<"/challenges/[slug]
   return { title: challenge.title, description: challenge.summary };
 }
 
-export default async function ChallengePage({ params }: PageProps<"/challenges/[slug]">) {
+function ChallengeSkeleton() {
+  return (
+    <div className="mx-auto max-w-6xl px-4 py-10 sm:px-6" aria-busy="true">
+      <div className="h-4 w-40 animate-pulse rounded bg-surface-elevated" />
+      <div className="mt-6 h-10 w-2/3 animate-pulse rounded bg-surface-elevated" />
+      <p className="mt-6 font-mono text-xs text-muted">[ ACCESSING DIGITAL EVIDENCE... ]</p>
+    </div>
+  );
+}
+
+/**
+ * `params` is read inside <Suspense> so a challenge that was published after
+ * the build (not in generateStaticParams) still gets an instant app shell.
+ */
+export default function ChallengePage(props: PageProps<"/challenges/[slug]">) {
+  return (
+    <Suspense fallback={<ChallengeSkeleton />}>
+      <ChallengeContent params={props.params} />
+    </Suspense>
+  );
+}
+
+async function ChallengeContent({ params }: { params: PageProps<"/challenges/[slug]">["params"] }) {
   const { slug } = await params;
   const challenge = await getPublishedChallenge(slug);
   if (!challenge) notFound();

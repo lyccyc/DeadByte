@@ -34,7 +34,15 @@ export async function generateMetadata({ params }: PageProps<"/regions/[slug]">)
   return { title: `${region.name} — ${region.forensicDomain}`, description: region.description };
 }
 
-export default async function RegionPage({ params }: PageProps<"/regions/[slug]">) {
+export default function RegionPage(props: PageProps<"/regions/[slug]">) {
+  return (
+    <Suspense fallback={<p className="mx-auto max-w-6xl px-4 py-16 font-mono text-xs text-muted sm:px-6">[ ACCESSING DIGITAL EVIDENCE... ]</p>}>
+      <RegionContent params={props.params} />
+    </Suspense>
+  );
+}
+
+async function RegionContent({ params }: { params: PageProps<"/regions/[slug]">["params"] }) {
   const { slug } = await params;
   const region = getRegion(slug);
   if (!region) notFound();
