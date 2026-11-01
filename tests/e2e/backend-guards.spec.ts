@@ -16,6 +16,20 @@ test.describe("protected endpoints fail closed without a backend", () => {
     expect(res.headers()["cache-control"]).toContain("no-store");
   });
 
+  test("evidence download grants are rejected and never return a URL", async ({ request }) => {
+    const res = await request.post("/api/v1/evidence/9a8b7c6d-5e4f-4a3b-9c2d-1e0f9a8b7c6d/download");
+    expect(res.status()).toBe(503);
+    const body = await res.json();
+    expect(body.url).toBeUndefined();
+    expect(body.error.code).toBe("not_configured");
+    expect(res.headers()["cache-control"]).toContain("no-store");
+  });
+
+  test("admin evidence API is unavailable", async ({ request }) => {
+    expect((await request.post("/api/v1/admin/evidence/register", { data: {} })).status()).toBe(503);
+    expect((await request.patch("/api/v1/admin/evidence/9a8b7c6d-5e4f-4a3b-9c2d-1e0f9a8b7c6d", { data: { active: false } })).status()).toBe(503);
+  });
+
   test("admin API is unavailable", async ({ request }) => {
     expect((await request.get("/api/v1/admin/challenges")).status()).toBe(503);
     const create = await request.post("/api/v1/admin/challenges", {

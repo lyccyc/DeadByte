@@ -42,10 +42,32 @@ describe("configuration state", () => {
     expect(state.accountsEnabled).toBe(false);
   });
 
-  it("enables accounts without R2, but evidence downloads stay off until Phase 3 ships", () => {
-    expect(getConfigState(full)).toMatchObject({ mode: "configured", accountsEnabled: true, evidenceDownloadsEnabled: false });
-    const withR2 = Object.fromEntries(REQUIRED_EVIDENCE_ENV.map((k) => [k, "v"]));
-    expect(getConfigState({ ...full, ...withR2 }).evidenceDownloadsEnabled).toBe(false);
+  const r2 = {
+    R2_ACCOUNT_ID: "0123456789abcdef0123456789abcdef",
+    R2_ACCESS_KEY_ID: "access-key-id",
+    R2_SECRET_ACCESS_KEY: "super-secret-access-key",
+    R2_BUCKET_NAME: "deadbyte-evidence-dev",
+  };
+
+  it("enables accounts without R2; evidence downloads need accounts AND valid R2 variables", () => {
+    expect(getConfigState(full)).toMatchObject({ mode: "configured", accountsEnabled: true, evidenceDownloadsEnabled: false, evidenceProblems: [] });
+    expect(getConfigState({ ...full, ...r2 })).toMatchObject({ evidenceDownloadsEnabled: true, evidenceProblems: [] });
+    expect(getConfigState(r2)).toMatchObject({ mode: "demo", evidenceDownloadsEnabled: false });
+    expect(Object.keys(r2).sort()).toEqual([...REQUIRED_EVIDENCE_ENV].sort());
+  });
+
+  it("partial or invalid R2 variables disable downloads only, with secret-free diagnostics", () => {
+    const partial = getConfigState({ ...full, R2_ACCOUNT_ID: r2.R2_ACCOUNT_ID, R2_SECRET_ACCESS_KEY: r2.R2_SECRET_ACCESS_KEY });
+    expect(partial).toMatchObject({ mode: "configured", accountsEnabled: true, evidenceDownloadsEnabled: false });
+    expect(partial.evidenceProblems.join(" ")).toMatch(/R2_ACCESS_KEY_ID, R2_BUCKET_NAME/);
+    const bad = getConfigState({ ...full, ...r2, R2_ACCOUNT_ID: "not-an-account", R2_BUCKET_NAME: "Bad_Bucket" });
+    expect(bad.evidenceDownloadsEnabled).toBe(false);
+    expect(bad.evidenceProblems).toHaveLength(2);
+    expect(JSON.stringify(bad)).not.toContain(r2.R2_SECRET_ACCESS_KEY);
+  });
+
+  it("treats NEXT_PUBLIC_R2_* as an exposed secret", () => {
+    expect(getConfigState({ ...full, ...r2, NEXT_PUBLIC_R2_SECRET_ACCESS_KEY: "x" }).mode).toBe("misconfigured");
   });
 
   it("parses the submission rate limit with a safe default", () => {

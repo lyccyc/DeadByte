@@ -1,4 +1,4 @@
-# Architecture (current state: Phases 0–2)
+# Architecture (current state: Phases 0–3)
 
 A single Next.js 16 App Router application (TypeScript, Tailwind CSS v4) with
 `cacheComponents` and `partialPrefetching` enabled, plus Supabase (Postgres and
@@ -13,7 +13,7 @@ security model.
 | `configured` | Supabase URL, publishable key, secret key and `FLAG_HMAC_SECRET` (≥32 bytes) all set | Real accounts, DB catalogue, flag submission, profile, leaderboard, admin. |
 | `misconfigured` | partial or invalid values, or a secret behind `NEXT_PUBLIC_` | Banner with secret-free diagnostics; everything protected stays off (fail closed). |
 
-Evidence downloads (R2) need the Phase 3 code (`EVIDENCE_DOWNLOADS_IMPLEMENTED`) and stay disabled until it ships.
+Evidence downloads also need valid `R2_*` variables (`evidenceDownloadsEnabled`). Partial or invalid R2 settings only disable downloads, and a banner explains why. See `docs/r2-setup.md`.
 
 ## Layout
 
@@ -26,6 +26,11 @@ Evidence downloads (R2) need the Phase 3 code (`EVIDENCE_DOWNLOADS_IMPLEMENTED`)
 | `src/server/submissions/submit-flag.ts` | Trusted submit flow (normalise → HMAC → `svc_submit_flag`). |
 | `src/server/leaderboard.ts`, `src/server/progress.ts` | Leaderboard (cached public aggregates, tag `leaderboard`) and the player's own progress (RLS). |
 | `src/server/admin/challenges.ts` | Admin list/read/save/publish/archive through `svc_*` functions. |
+| `src/lib/evidence.ts` | Object-key layout, manifest schema, Content-Disposition, TTL/limit settings (shared with the CLI). |
+| `src/lib/r2/` | `env.ts` (R2 env validation), `config.ts` (S3 client for R2), `client.ts` (server-only presign + HEAD). |
+| `src/server/evidence/grant-download.ts` | Trusted download flow: `svc_grant_evidence_download` → presigned R2 GET URL. |
+| `src/server/admin/evidence.ts` | Admin evidence list, R2 HEAD-verified registration, activate/deactivate. |
+| `scripts/upload-evidence.mts` | Operator CLI: streaming SHA-256 + multipart upload + verification + manifest (+ `--register`). |
 | `src/server/auth-actions.ts` | Server Actions: sign in, sign up, password reset/update, username update. |
 | `src/app/api/v1/` | Route Handlers. Mutations check `Origin` and the session, and return `Cache-Control: private, no-store` for personal data. |
 | `src/proxy.ts` | Real 404s for unknown regions (and demo challenges); Supabase session refresh. |
@@ -45,7 +50,7 @@ Evidence downloads (R2) need the Phase 3 code (`EVIDENCE_DOWNLOADS_IMPLEMENTED`)
 
 - A site-wide banner shows demo mode, misconfiguration, or an unmigrated or
   unreachable database.
-- Controls without a working backend (e.g. evidence download before Phase 3)
+- Controls without a working backend (e.g. evidence download without R2)
   are rendered **disabled**, with an explanation.
 - Database challenges marked as sample content show a **Sample** label.
 - The leaderboard shows real solves only.

@@ -92,8 +92,8 @@ export default function AdminChallengesPage() {
         </Link>
       </AdminHeader>
       <p className="mt-2 text-sm text-muted">
-        Publishing requires a flag and, when “requires evidence” is set, at least one verified evidence file. Evidence
-        upload and attachment arrive with the R2 integration (Phase 3).
+        Publishing requires a flag and, when “requires evidence” is set, at least one verified evidence file. Upload
+        evidence with <code className="font-mono">npm run upload-evidence</code> and attach it on the challenge&apos;s edit page.
       </p>
       <Suspense fallback={<p className="mt-6 font-mono text-xs text-muted">[ LOADING CASE FILES... ]</p>}>
         <AdminGate next="/admin/challenges">{() => <ChallengeTable />}</AdminGate>

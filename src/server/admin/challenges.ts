@@ -125,7 +125,7 @@ const PUBLISH_MESSAGES: Record<string, { status: 404 | 409; message: string }> =
   missing_flag: { status: 409, message: "Set a flag before publishing." },
   missing_evidence: {
     status: 409,
-    message: "This challenge requires at least one verified evidence file. Upload and attach evidence (Phase 3) or untick “requires evidence”.",
+    message: "This challenge requires at least one verified evidence file. Upload it with npm run upload-evidence and attach it below, or untick “requires evidence”.",
   },
 };
 

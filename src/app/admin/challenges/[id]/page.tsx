@@ -1,7 +1,10 @@
 import Link from "next/link";
 import { Suspense } from "react";
 import { isUuid } from "@/lib/api";
+import { getConfigState } from "@/lib/app-config";
 import { getAdminChallenge } from "@/server/admin/challenges";
+import { listChallengeEvidence } from "@/server/admin/evidence";
+import { EvidencePanel } from "@/components/admin/evidence-panel";
 import { AdminGate, AdminHeader } from "@/components/admin/admin-gate";
 import { ChallengeEditor } from "@/components/admin/challenge-editor";
 import { StatusActions } from "@/components/admin/status-actions";
@@ -26,6 +29,7 @@ async function Editor({ id, created }: { id: string; created: boolean }) {
     );
   }
   const { hasFlag, status, evidence } = challenge;
+  const files = await listChallengeEvidence(challenge.id);
   const fields = {
     slug: challenge.slug,
     region: challenge.region,
@@ -58,6 +62,19 @@ async function Editor({ id, created }: { id: string; created: boolean }) {
         <p role="status" className="mt-4 text-sm text-success">Draft created.</p>
       ) : null}
       <ChallengeEditor id={challenge.id} initial={fields} hasFlag={hasFlag} />
+      <EvidencePanel
+        challengeId={challenge.id}
+        storageReady={getConfigState().evidenceDownloadsEnabled}
+        files={files.map(({ id, displayName, objectKey, sizeBytes, sha256, uploadStatus, isActive }) => ({
+          id,
+          displayName,
+          objectKey,
+          sizeBytes,
+          sha256,
+          uploadStatus,
+          isActive,
+        }))}
+      />
     </>
   );
 }

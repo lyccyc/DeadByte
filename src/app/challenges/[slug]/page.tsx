@@ -12,7 +12,8 @@ import { DifficultyBadge } from "@/components/challenges/difficulty-badge";
 import { FlagForm, FlagFormLocked } from "@/components/challenges/flag-form";
 import { getSessionUser } from "@/server/auth";
 import { getMySolves } from "@/server/progress";
-import type { Challenge } from "@/lib/challenge-types";
+import type { Challenge, EvidenceFile } from "@/lib/challenge-types";
+import { EvidenceDownloadButton } from "@/components/challenges/evidence-download";
 import { CopyButton } from "@/components/ui/copy-button";
 import { DemoTag } from "@/components/ui/demo-tag";
 import { Notice } from "@/components/ui/notice";
@@ -37,6 +38,38 @@ async function PlayerSolveStatus({ challenge }: { challenge: Challenge }) {
   ) : (
     <span className="text-fg">Unsolved</span>
   );
+}
+
+function LockedDownloadButton({ fileId }: { fileId: string }) {
+  return (
+    <button
+      type="button"
+      disabled
+      className="inline-flex items-center gap-2 rounded-md border border-border px-3 py-2 font-mono text-xs tracking-wider text-muted disabled:cursor-not-allowed"
+      aria-describedby={`dl-${fileId}`}
+    >
+      <Lock className="size-3.5" aria-hidden="true" />
+      <Download className="size-3.5" aria-hidden="true" />
+      DOWNLOAD EVIDENCE
+    </button>
+  );
+}
+
+/** Per-file download action. Reads the session, so it renders inside <Suspense>. */
+async function EvidenceAction({ challenge, file }: { challenge: Challenge; file: EvidenceFile }) {
+  const user = await getSessionUser();
+  if (!user) {
+    return (
+      <Link
+        href={`/login?next=${encodeURIComponent(`/challenges/${challenge.slug}`)}`}
+        className="inline-flex items-center gap-2 rounded-md border border-border px-3 py-2 font-mono text-xs tracking-wider text-fg hover:border-accent hover:text-accent"
+        data-testid="evidence-signin"
+      >
+        <Lock className="size-3.5" aria-hidden="true" /> SIGN IN TO DOWNLOAD
+      </Link>
+    );
+  }
+  return <EvidenceDownloadButton evidenceId={file.id} displayName={file.displayName} />;
 }
 
 async function PlayerFlagPanel({ challenge }: { challenge: Challenge }) {
@@ -84,9 +117,9 @@ export default async function ChallengePage({ params }: PageProps<"/challenges/[
   const region = getRegionOrThrow(challenge.region);
   const { accountsEnabled, evidenceDownloadsEnabled } = getConfigState();
   const downloadNote = evidenceDownloadsEnabled
-    ? "Sign in to request a short-lived download link."
+    ? "Signed-in players get a private link that expires after a few minutes. The file downloads directly from secure storage; resume with curl -C - if it is interrupted."
     : accountsEnabled
-      ? "Evidence downloads are not connected yet: the private evidence storage (Cloudflare R2) is still being set up."
+      ? "Evidence downloads are disabled on this server: private evidence storage (Cloudflare R2) is not configured."
       : "Downloads are unavailable in demo mode: no evidence is stored and sign-in is not connected.";
 
   return (
@@ -167,16 +200,13 @@ export default async function ChallengePage({ params }: PageProps<"/challenges/[
                             </p>
                           </div>
                         </div>
-                        <button
-                          type="button"
-                          disabled
-                          className="inline-flex items-center gap-2 rounded-md border border-border px-3 py-2 font-mono text-xs tracking-wider text-muted disabled:cursor-not-allowed"
-                          aria-describedby={`dl-${file.id}`}
-                        >
-                          <Lock className="size-3.5" aria-hidden="true" />
-                          <Download className="size-3.5" aria-hidden="true" />
-                          DOWNLOAD EVIDENCE
-                        </button>
+                        {evidenceDownloadsEnabled && uploaded && !challenge.isDemo ? (
+                          <Suspense fallback={<LockedDownloadButton fileId={file.id} />}>
+                            <EvidenceAction challenge={challenge} file={file} />
+                          </Suspense>
+                        ) : (
+                          <LockedDownloadButton fileId={file.id} />
+                        )}
                       </div>
                       <dl className="mt-3 grid gap-1 border-t border-border pt-3 font-mono text-xs">
                         <dt className="text-muted">SHA-256</dt>

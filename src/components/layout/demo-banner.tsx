@@ -24,7 +24,19 @@ export async function DemoBanner() {
 
   if (state.mode === "configured") {
     const { error } = await getCatalogue();
-    if (!error) return null;
+    if (!error) {
+      if (state.evidenceProblems.length === 0) return null;
+      return (
+        <div role="status" className="border-b border-warning/40 bg-warning/10">
+          <p className="mx-auto flex max-w-6xl items-start gap-2 px-4 py-2 font-mono text-xs text-warning sm:px-6" data-testid="r2-banner">
+            <AlertTriangle className="mt-0.5 size-3.5 shrink-0" aria-hidden="true" />
+            <span>
+              EVIDENCE STORAGE MISCONFIGURED: {state.evidenceProblems.join("; ")}. Downloads stay disabled. See docs/r2-setup.md.
+            </span>
+          </p>
+        </div>
+      );
+    }
     return (
       <div role="status" className="border-b border-danger/40 bg-danger/10">
         <p className="mx-auto flex max-w-6xl items-start gap-2 px-4 py-2 font-mono text-xs text-danger sm:px-6" data-testid="db-banner">
