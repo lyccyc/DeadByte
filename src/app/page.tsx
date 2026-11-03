@@ -64,7 +64,7 @@ export default async function HomePage() {
 
           <div className="relative mx-auto w-48 sm:w-60 md:w-full md:max-w-xs">
             <div className="absolute inset-6 rounded-full bg-accent/10 blur-3xl" aria-hidden="true" />
-            <ExplorerPenguin className="relative h-auto w-full drop-shadow-[0_10px_30px_rgba(0,0,0,0.5)]" />
+            <ExplorerPenguin interactive className="relative h-auto w-full drop-shadow-[0_10px_30px_rgba(0,0,0,0.5)]" />
             <p className="mt-2 text-center font-mono text-[11px] uppercase tracking-widest text-muted">
               Field agent · base camp Antarctica
             </p>

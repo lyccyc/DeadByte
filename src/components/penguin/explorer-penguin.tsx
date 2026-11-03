@@ -3,72 +3,133 @@ import type { SVGProps } from "react";
 interface ExplorerPenguinProps extends SVGProps<SVGSVGElement> {
   /** Accessible label; pass `undefined` together with aria-hidden for decorative use. */
   title?: string;
+  /**
+   * Hover/tap switches the flashlight on: its beam spills outside the SVG box
+   * and reveals a hidden "DEADBYTE" on the background. Use once per page
+   * (gradient ids are fixed) and leave room above the penguin.
+   */
+  interactive?: boolean;
 }
 
+const OUTLINE = "#5b6883";
+const BODY = "#1f293b";
+const BELLY = "#f1f3f8";
+const INK = "#0e1421";
+const BEAK = "#ff8a4c";
+const CORAL = "#ff6573";
+const LAMP = "#ffc56d";
+
+/** Shown only while an interactive penguin is hovered. */
+const LIT = "opacity-0 transition-opacity duration-300 group-hover:opacity-100 motion-reduce:transition-none";
+
 /**
- * Original DeadByte mascot: a cyber-explorer penguin with a backpack,
- * headlamp visor and magnifying glass. Pure SVG, no external assets.
+ * Original DeadByte mascot: a chubby, winking explorer penguin sitting on an
+ * Antarctic ice floe, with a headlamp, a flashlight, a magnifying glass and a
+ * tiny terminal badge. Pure SVG, no external assets.
  */
-export function ExplorerPenguin({ title = "DeadByte explorer penguin", ...props }: ExplorerPenguinProps) {
+export function ExplorerPenguin({ title = "DeadByte explorer penguin", interactive = false, className, ...props }: ExplorerPenguinProps) {
   return (
-    <svg viewBox="0 0 160 180" role={title ? "img" : undefined} aria-label={title} {...props}>
+    <svg
+      viewBox="0 0 160 180"
+      role={title ? "img" : undefined}
+      aria-label={title}
+      overflow={interactive ? "visible" : undefined}
+      className={interactive ? `group ${className ?? ""}` : className}
+      {...props}
+    >
       {title ? <title>{title}</title> : null}
-      {/* shadow */}
-      <ellipse cx="78" cy="170" rx="44" ry="6" fill="#000" opacity="0.35" />
 
-      {/* backpack */}
-      <rect x="22" y="70" width="30" height="58" rx="10" fill="#303849" stroke="#455068" strokeWidth="2" />
-      <rect x="26" y="84" width="22" height="14" rx="4" fill="#1d2738" />
-      <circle cx="37" cy="91" r="2.5" fill="#48c39b" />
-      <line x1="30" y1="64" x2="30" y2="72" stroke="#455068" strokeWidth="3" strokeLinecap="round" />
-      <circle cx="30" cy="62" r="3" fill="#ff6573" />
+      {interactive ? (
+        <g className={LIT} pointerEvents="none" aria-hidden="true">
+          <defs>
+            <linearGradient id="db-penguin-beam" x1="15" y1="66" x2="40" y2="-30" gradientUnits="userSpaceOnUse">
+              <stop offset="0" stopColor={LAMP} stopOpacity="0.55" />
+              <stop offset="1" stopColor={LAMP} stopOpacity="0.08" />
+            </linearGradient>
+            <radialGradient id="db-penguin-spot">
+              <stop offset="0" stopColor={LAMP} stopOpacity="0.35" />
+              <stop offset="0.7" stopColor={LAMP} stopOpacity="0.12" />
+              <stop offset="1" stopColor={LAMP} stopOpacity="0" />
+            </radialGradient>
+          </defs>
+          {/* beam from the flashlight to the light spot on the background */}
+          <path d="M13 66 L-18 -28 L98 -28 L18 66 Z" fill="url(#db-penguin-beam)" />
+          <ellipse cx="40" cy="-30" rx="62" ry="19" fill="url(#db-penguin-spot)" />
+          <text
+            x="40"
+            y="-25"
+            textAnchor="middle"
+            fontFamily="var(--font-mono)"
+            fontSize="15"
+            fontWeight="700"
+            letterSpacing="2.5"
+            fill={CORAL}
+          >
+            DEADBYTE
+          </text>
+        </g>
+      ) : null}
 
-      {/* feet */}
-      <ellipse cx="62" cy="164" rx="14" ry="6" fill="#ff8a4c" />
-      <ellipse cx="96" cy="164" rx="14" ry="6" fill="#ff8a4c" />
+      {/* ice floe */}
+      <ellipse cx="80" cy="164" rx="62" ry="10" fill="#8bd3f7" fillOpacity="0.14" stroke="#8bd3f7" strokeOpacity="0.45" strokeWidth="2" />
+      <path d="M26 172c6 3 14 4 20 3M118 175c8 0 14-1 18-3" stroke="#8bd3f7" strokeOpacity="0.4" strokeWidth="2" fill="none" strokeLinecap="round" />
 
-      {/* body */}
-      <path d="M79 26c-30 0-44 28-44 64 0 40 16 72 44 72s44-32 44-72c0-36-14-64-44-64z" fill="#1b2433" />
-      <path d="M79 26c-30 0-44 28-44 64 0 40 16 72 44 72s44-32 44-72c0-36-14-64-44-64z" fill="none" stroke="#2c3850" strokeWidth="2" />
-      {/* belly */}
-      <path d="M79 64c-19 0-27 20-27 42 0 26 10 48 27 48s27-22 27-48c0-22-8-42-27-42z" fill="#f1f3f8" />
+      {/* flashlight, held up in the left flipper */}
+      <g transform="translate(12.5 78) rotate(14)">
+        <rect x="-3.5" y="-4" width="7" height="15" rx="2" fill="#303849" stroke={OUTLINE} strokeWidth="1.5" />
+        <rect x="-5.5" y="-11" width="11" height="8" rx="2" fill="#455068" stroke={OUTLINE} strokeWidth="1.5" />
+        <rect x="-4.5" y="-12.5" width="9" height="2.5" rx="1" fill={LAMP} opacity={interactive ? 0.45 : 0.8} />
+        {interactive ? <rect x="-4.5" y="-12.5" width="9" height="2.5" rx="1" fill={LAMP} className={LIT} /> : null}
+      </g>
+      <path d="M38 100c-12-1-24-7-30-17 10-2 21 3 29 10z" fill={BODY} stroke={OUTLINE} strokeWidth="2.5" strokeLinejoin="round" />
 
-      {/* strap */}
-      <path d="M44 74c10 6 18 20 20 40" stroke="#455068" strokeWidth="5" fill="none" strokeLinecap="round" />
+      {/* right flipper raised, holding the magnifying glass */}
+      <line x1="146" y1="71" x2="150" y2="86" stroke="#a2adbf" strokeWidth="4.5" strokeLinecap="round" />
+      <path d="M122 100c12-1 24-7 30-17-10-2-21 3-29 10z" fill={BODY} stroke={OUTLINE} strokeWidth="2.5" strokeLinejoin="round" />
+      <circle cx="141" cy="61" r="11.5" fill="#8bd3f7" fillOpacity="0.2" stroke="#a2adbf" strokeWidth="3.5" />
+      <path d="M134.5 57.5a7 7 0 0 1 5.5-4.5" stroke="#fff" strokeOpacity="0.8" strokeWidth="2" fill="none" strokeLinecap="round" />
 
-      {/* left flipper */}
-      <path d="M38 88c-10 10-14 26-10 38 6-4 12-14 14-24z" fill="#141b28" />
+      {/* round body + head */}
+      <path
+        d="M80 26c32 0 48 24 46 54-1 16 8 30 6 50-2 22-22 32-52 32s-50-10-52-32c-2-20 7-34 6-50-2-30 14-54 46-54z"
+        fill={BODY}
+        stroke={OUTLINE}
+        strokeWidth="2.5"
+      />
 
-      {/* face mask */}
-      <path d="M79 36c-18 0-28 12-28 28 0 8 4 14 10 16h36c6-2 10-8 10-16 0-16-10-28-28-28z" fill="#f1f3f8" />
+      {/* heart-shaped face flowing into the belly */}
+      <path
+        d="M80 50c-8-10-28-10-32 8-4 16 4 30 12 38-10 8-14 22-12 38 2 16 16 24 32 24s30-8 32-24c2-16-2-30-12-38 8-8 16-22 12-38-4-18-24-18-32-8z"
+        fill={BELLY}
+      />
 
-      {/* visor band + headlamp */}
-      <path d="M50 52c18-8 40-8 58 0" stroke="#303849" strokeWidth="6" fill="none" strokeLinecap="round" />
-      <rect x="71" y="40" width="16" height="10" rx="3" fill="#303849" />
-      <circle cx="79" cy="45" r="3.5" fill="#ffc56d" />
-      <path d="M79 45 L60 4 L98 4 Z" fill="#ffc56d" opacity="0.08" />
+      {/* headlamp (glows while the flashlight is on) */}
+      <rect x="72" y="33" width="16" height="10" rx="4" fill="#303849" stroke={OUTLINE} strokeWidth="1.5" />
+      <circle cx="80" cy="38" r="3" fill={LAMP} />
+      {interactive ? <circle cx="80" cy="38" r="6" fill={LAMP} opacity="0.35" className={LIT} /> : null}
 
-      {/* eyes */}
-      <circle cx="68" cy="62" r="5" fill="#0e1421" />
-      <circle cx="90" cy="62" r="5" fill="#0e1421" />
-      <circle cx="69.6" cy="60.4" r="1.6" fill="#fff" />
-      <circle cx="91.6" cy="60.4" r="1.6" fill="#fff" />
+      {/* open eye */}
+      <circle cx="66" cy="70" r="6.5" fill={INK} />
+      <circle cx="68" cy="67.5" r="2.3" fill="#fff" />
+      <circle cx="64.3" cy="72.5" r="1" fill="#fff" />
+      {/* winking eye */}
+      <path d="M88 71q7-7 14 0" stroke={INK} strokeWidth="3.2" fill="none" strokeLinecap="round" />
+
       {/* blush */}
-      <ellipse cx="62" cy="71" rx="4" ry="2.2" fill="#ff6573" opacity="0.45" />
-      <ellipse cx="96" cy="71" rx="4" ry="2.2" fill="#ff6573" opacity="0.45" />
+      <ellipse cx="57" cy="82" rx="5" ry="3" fill={CORAL} opacity="0.5" />
+      <ellipse cx="103" cy="82" rx="5" ry="3" fill={CORAL} opacity="0.5" />
+
       {/* beak */}
-      <path d="M73 69 Q79 66 85 69 Q79 77 73 69z" fill="#ff8a4c" />
+      <path d="M74 79q6-3 12 0-2.5 7-6 8-3.5-1-6-8z" fill={BEAK} />
 
-      {/* right flipper holding magnifying glass */}
-      <path d="M118 88c12 4 18 14 18 22-8 0-14-6-18-12z" fill="#141b28" />
-      <line x1="128" y1="104" x2="138" y2="122" stroke="#a2adbf" strokeWidth="4" strokeLinecap="round" />
-      <circle cx="124" cy="96" r="12" fill="#8bd3f7" fillOpacity="0.18" stroke="#a2adbf" strokeWidth="3.5" />
-      <path d="M118 92a7 7 0 0 1 6-4" stroke="#fff" strokeOpacity="0.7" strokeWidth="2" fill="none" strokeLinecap="round" />
+      {/* feet, sticking out in front while sitting */}
+      <ellipse cx="62" cy="161" rx="12" ry="7.5" fill={BEAK} stroke="#c9602c" strokeWidth="1.5" transform="rotate(-14 62 161)" />
+      <ellipse cx="98" cy="161" rx="12" ry="7.5" fill={BEAK} stroke="#c9602c" strokeWidth="1.5" transform="rotate(14 98 161)" />
 
-      {/* chest badge: tiny terminal */}
-      <rect x="70" y="96" width="18" height="12" rx="2" fill="#151d2c" />
-      <path d="M73 100l3 2-3 2" stroke="#ff6573" strokeWidth="1.4" fill="none" strokeLinecap="round" />
-      <line x1="78" y1="105" x2="84" y2="105" stroke="#48c39b" strokeWidth="1.4" strokeLinecap="round" />
+      {/* belly badge: tiny terminal */}
+      <rect x="69" y="114" width="22" height="15" rx="3" fill="#151d2c" />
+      <path d="M73 119l3.5 2.5-3.5 2.5" stroke={CORAL} strokeWidth="1.6" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+      <line x1="79" y1="125" x2="86" y2="125" stroke="#48c39b" strokeWidth="1.6" strokeLinecap="round" />
     </svg>
   );
 }
